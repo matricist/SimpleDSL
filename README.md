@@ -42,6 +42,24 @@ python -m simpledsl input.dsl output.musicxml
 python main.py input.dsl output.musicxml
 ```
 
+## 작곡 브리프 JSON
+
+`sample/empty-window.brief.json`은 AI나 빌드 파이프라인이 읽기 쉬운 작곡 지시 파일입니다.
+
+테크닉은 다음처럼 boolean 플래그와 사용 지침을 함께 적습니다.
+
+```json
+{
+  "techniques": {
+    "flags": {
+      "trill": true,
+      "brokenChords": true,
+      "parallelThirds": true
+    }
+  }
+}
+```
+
 ## 핵심 개념
 
 ### 1. 세미콜론(`;`)은 시간 슬롯입니다

@@ -1,0 +1,129 @@
+{
+  "title": "Empty Window",
+  "metadata": {
+    "unit": "1/16",
+    "tempo": "96q",
+    "time": "4/4",
+    "key": "C",
+    "lengthMeasures": 48,
+    "form": [
+      {
+        "section": "A",
+        "measures": "1-12",
+        "role": "quiet main motif"
+      },
+      {
+        "section": "A'",
+        "measures": "13-24",
+        "role": "same energy with more two-note writing"
+      },
+      {
+        "section": "B",
+        "measures": "25-36",
+        "role": "climax with higher register and stronger motion"
+      },
+      {
+        "section": "A''",
+        "measures": "37-48",
+        "role": "return and calm ending"
+      }
+    ]
+  },
+  "style": {
+    "genre": "new age with baroque keyboard influence",
+    "instrumentFeel": "harpsichord",
+    "mood": [
+      "quiet",
+      "nostalgic",
+      "cold",
+      "mysterious",
+      "pastoral"
+    ],
+    "avoid": [
+      "jazzy improvisation",
+      "overly flashy passagework",
+      "childlike brightness",
+      "strong horror dissonance"
+    ]
+  },
+  "techniques": {
+    "flags": {
+      "trill": true,
+      "mordent": false,
+      "turn": false,
+      "graceNotes": false,
+      "arpeggio": true,
+      "brokenChords": true,
+      "passingMotion": true,
+      "sequence": true,
+      "parallelThirds": true,
+      "counterMotion": true,
+      "pedalPoint": false,
+      "staccato": false,
+      "legato": true,
+      "accent": false
+    },
+    "usage": {
+      "trill": {
+        "enabled": true,
+        "dslSyntax": "~tr",
+        "targetSections": [
+          "B"
+        ],
+        "targetMeasures": [
+          26,
+          34
+        ],
+        "density": "rare",
+        "purpose": "give the climax a small baroque ornament without making the piece flashy"
+      },
+      "brokenChords": {
+        "enabled": true,
+        "targetTracks": [
+          "LH"
+        ],
+        "density": "steady",
+        "purpose": "create harpsichord-like motion and keep the texture alive"
+      },
+      "parallelThirds": {
+        "enabled": true,
+        "targetTracks": [
+          "RH"
+        ],
+        "density": "moderate",
+        "purpose": "make the melody sound fuller without turning it into thick block chords"
+      },
+      "passingMotion": {
+        "enabled": true,
+        "targetSections": [
+          "B"
+        ],
+        "density": "moderate",
+        "purpose": "make measures 33-36 less square and more climactic"
+      },
+      "counterMotion": {
+        "enabled": true,
+        "targetMeasures": [
+          33,
+          34,
+          35,
+          36
+        ],
+        "density": "light",
+        "purpose": "separate RH and LH motion during the climax"
+      }
+    }
+  },
+  "generationRules": {
+    "measureSlots": 16,
+    "rhTrack": "melody, ornaments, and upper two-note writing",
+    "lhTrack": "broken harmony and contrapuntal support",
+    "climaxStrategy": [
+      "raise RH register",
+      "increase rhythmic detail",
+      "use rare trills",
+      "avoid constant quarter-note blocks",
+      "return to thinner texture after measure 36"
+    ]
+  }
+}
