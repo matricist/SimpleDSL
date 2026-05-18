@@ -163,6 +163,7 @@ class MusicXmlExporter:
         for chunk in chunks:
             groups.setdefault(chunk.start_slot, []).append(chunk)
 
+        beams = cls._calculate_beams(groups, measure_start, measure_end)
         cursor = measure_start
         for start_slot in sorted(groups):
             if start_slot > cursor:
@@ -173,12 +174,73 @@ class MusicXmlExporter:
                 key=lambda chunk: (-chunk.duration_slots, chunk.note.step, chunk.note.octave),
             )
             for index, chunk in enumerate(ordered):
-                cls._append_pitched_note(lines, chunk, chord=index > 0)
+                cls._append_pitched_note(lines, chunk, chord=index > 0, beams=beams.get(start_slot))
 
             cursor = max(cursor, max(chunk.end_slot for chunk in ordered))
 
         if cursor < measure_end:
             cls._append_rest_range(lines, cursor, measure_end)
+
+    @classmethod
+    def _calculate_beams(
+        cls,
+        groups: dict[int, list[NoteChunk]],
+        measure_start: int,
+        measure_end: int,
+    ) -> dict[int, dict[int, str]]:
+        beams: dict[int, dict[int, str]] = {}
+
+        for beat_start in range(measure_start, measure_end, DIVISIONS):
+            beat_end = min(beat_start + DIVISIONS, measure_end)
+            starts = sorted(start for start in groups if beat_start <= start < beat_end)
+            index = 0
+
+            while index < len(starts):
+                start_index = index
+                cursor = starts[index]
+                run: list[tuple[int, int]] = []
+
+                while index < len(starts):
+                    start = starts[index]
+                    duration = cls._beamable_group_duration(groups[start])
+                    if start != cursor or duration is None or start + duration > beat_end:
+                        break
+
+                    run.append((start, duration))
+                    cursor = start + duration
+                    index += 1
+
+                if len(run) >= 2 and len({duration for _, duration in run}) == 1:
+                    cls._assign_beam_run(beams, run)
+
+                if index == start_index:
+                    index += 1
+
+        return beams
+
+    @staticmethod
+    def _beamable_group_duration(chunks: list[NoteChunk]) -> int | None:
+        durations = {chunk.duration_slots for chunk in chunks}
+        if len(durations) != 1:
+            return None
+
+        duration = next(iter(durations))
+        return duration if duration in {1, 2} else None
+
+    @staticmethod
+    def _assign_beam_run(beams: dict[int, dict[int, str]], run: list[tuple[int, int]]) -> None:
+        duration = run[0][1]
+        beam_count = 2 if duration == 1 else 1
+
+        for index, (start, _) in enumerate(run):
+            if index == 0:
+                value = "begin"
+            elif index == len(run) - 1:
+                value = "end"
+            else:
+                value = "continue"
+
+            beams[start] = {number: value for number in range(1, beam_count + 1)}
 
     @classmethod
     def _split_note(cls, note: NoteEvent, measure_start: int, measure_end: int) -> list[NoteChunk]:
@@ -211,7 +273,13 @@ class MusicXmlExporter:
             cursor += duration
 
     @classmethod
-    def _append_pitched_note(cls, lines: list[str], chunk: NoteChunk, chord: bool) -> None:
+    def _append_pitched_note(
+        cls,
+        lines: list[str],
+        chunk: NoteChunk,
+        chord: bool,
+        beams: dict[int, str] | None = None,
+    ) -> None:
         note_type, dot_count = NOTE_TYPES[chunk.duration_slots]
         lines.append("      <note>")
         if chord:
@@ -238,6 +306,9 @@ class MusicXmlExporter:
         lines.append(f"        <type>{note_type}</type>")
         for _ in range(dot_count):
             lines.append("        <dot/>")
+        if beams:
+            for number, value in sorted(beams.items()):
+                lines.append(f'        <beam number="{number}">{value}</beam>')
         if chunk.tie_stop or chunk.tie_start:
             lines.append("        <notations>")
             if chunk.tie_stop:
