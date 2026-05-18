@@ -16,15 +16,19 @@ using SimpleDSL;
 
 var inputPath = args.Length > 0 ? args[0] : "input.dsl";
 var outputPath = args.Length > 1 ? args[1] : "output.musicxml";
+var sheetOutputPath = args.Length > 2 ? args[2] : Path.ChangeExtension(outputPath, ".svg");
 
 try
 {
     var dsl = File.ReadAllText(inputPath);
     var score = DslParser.Parse(dsl);
     var musicXml = MusicXmlExporter.Export(score);
+    var sheetSvg = SheetSvgExporter.Export(score);
 
     File.WriteAllText(outputPath, musicXml);
+    File.WriteAllText(sheetOutputPath, sheetSvg);
     Console.WriteLine($"Wrote MusicXML to {outputPath}");
+    Console.WriteLine($"Wrote sheet SVG to {sheetOutputPath}");
 }
 catch (Exception ex)
 {
