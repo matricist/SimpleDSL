@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from html import escape
 
-from .models import NoteEvent, Score
+from .models import ChordSymbol, NoteEvent, Score
 
 
 DIVISIONS = 12
@@ -114,7 +114,7 @@ class MusicXmlExporter:
                 cls._append_attributes(lines, score, track_name)
                 cls._append_tempo(lines, score)
 
-            cls._append_measure_contents(lines, track.notes, measure_start, measure_end)
+            cls._append_measure_contents(lines, track.notes, track.chord_symbols, measure_start, measure_end)
             lines.append("    </measure>")
 
         lines.append("  </part>")
@@ -156,6 +156,7 @@ class MusicXmlExporter:
         cls,
         lines: list[str],
         notes: list[NoteEvent],
+        chord_symbols: list[ChordSymbol],
         measure_start: int,
         measure_end: int,
     ) -> None:
@@ -169,11 +170,22 @@ class MusicXmlExporter:
         for chunk in chunks:
             groups.setdefault(chunk.start_slot, []).append(chunk)
 
+        chords: dict[Fraction, list[ChordSymbol]] = {}
+        for chord in chord_symbols:
+            if measure_start <= chord.start_slot < measure_end:
+                chords.setdefault(chord.start_slot, []).append(chord)
+
         beams = cls._calculate_beams(groups, measure_start, measure_end)
         cursor = Fraction(measure_start)
-        for start_slot in sorted(groups):
+        for start_slot in sorted(set(groups) | set(chords)):
             if start_slot > cursor:
                 cls._append_rest_range(lines, cursor, start_slot)
+
+            for chord in chords.get(start_slot, []):
+                cls._append_chord_symbol(lines, chord)
+
+            if start_slot not in groups:
+                continue
 
             ordered = sorted(
                 groups[start_slot],
@@ -191,6 +203,39 @@ class MusicXmlExporter:
 
         if cursor < measure_end:
             cls._append_rest_range(lines, cursor, measure_end)
+
+    @staticmethod
+    def _append_chord_symbol(lines: list[str], chord: ChordSymbol) -> None:
+        lines.extend(
+            [
+                "      <harmony>",
+                "        <root>",
+                f"          <root-step>{chord.root_step}</root-step>",
+            ]
+        )
+        if chord.root_alter:
+            lines.append(f"          <root-alter>{chord.root_alter}</root-alter>")
+        lines.extend(
+            [
+                "        </root>",
+                f'        <kind text="{escape(chord.kind_text)}">{chord.kind}</kind>',
+            ]
+        )
+        if chord.bass_step is not None:
+            lines.extend(
+                [
+                    "        <bass>",
+                    f"          <bass-step>{chord.bass_step}</bass-step>",
+                ]
+            )
+            if chord.bass_alter:
+                lines.append(f"          <bass-alter>{chord.bass_alter}</bass-alter>")
+            lines.extend(
+                [
+                    "        </bass>",
+                ]
+            )
+        lines.append("      </harmony>")
 
     @classmethod
     def _calculate_beams(

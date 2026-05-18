@@ -3,7 +3,7 @@ from __future__ import annotations
 from fractions import Fraction
 import re
 
-from .models import NoteEvent, Score, Track, TupletInfo
+from .models import ChordSymbol, NoteEvent, Score, Track, TupletInfo
 
 
 class DslParser:
@@ -19,6 +19,30 @@ class DslParser:
         r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)(?P<ornament>~(?:tr|trill))?",
         re.IGNORECASE,
     )
+    CHORD_RE = re.compile(r"\{(?P<symbol>[^{}]+)\}")
+    CHORD_SYMBOL_RE = re.compile(
+        r"(?P<root>[A-Ga-g])(?P<root_accidental>#|b)?(?P<suffix>[^/]*)"
+        r"(?:/(?P<bass>[A-Ga-g])(?P<bass_accidental>#|b)?)?$"
+    )
+    CHORD_KINDS = {
+        "": ("major", ""),
+        "m": ("minor", "m"),
+        "min": ("minor", "m"),
+        "maj7": ("major-seventh", "maj7"),
+        "M7": ("major-seventh", "maj7"),
+        "m7": ("minor-seventh", "m7"),
+        "min7": ("minor-seventh", "m7"),
+        "7": ("dominant", "7"),
+        "dim": ("diminished", "dim"),
+        "aug": ("augmented", "aug"),
+        "sus2": ("suspended-second", "sus2"),
+        "sus4": ("suspended-fourth", "sus4"),
+        "6": ("major-sixth", "6"),
+        "m6": ("minor-sixth", "m6"),
+        "9": ("dominant-ninth", "9"),
+        "maj9": ("major-ninth", "maj9"),
+        "m9": ("minor-ninth", "m9"),
+    }
 
     @classmethod
     def parse(cls, text: str) -> Score:
@@ -102,6 +126,12 @@ class DslParser:
                 index += 1
                 continue
 
+            chord_match = cls.CHORD_RE.match(segment, index)
+            if chord_match is not None:
+                cls._parse_chord_symbol(chord_match.group("symbol").strip(), track, line_number)
+                index = chord_match.end()
+                continue
+
             tuplet_match = cls.TUPLET_RE.match(segment, index)
             if tuplet_match is not None:
                 cls._parse_tuplet(tuplet_match, track, line_number)
@@ -134,6 +164,33 @@ class DslParser:
                 )
             )
             index = match.end()
+
+    @classmethod
+    def _parse_chord_symbol(cls, symbol: str, track: Track, line_number: int) -> None:
+        if not symbol:
+            raise ValueError(f"Line {line_number}: chord symbol cannot be empty.")
+
+        match = cls.CHORD_SYMBOL_RE.fullmatch(symbol)
+        if match is None:
+            raise ValueError(f"Line {line_number}: invalid chord symbol '{symbol}'.")
+
+        suffix = match.group("suffix")
+        kind, kind_text = cls.CHORD_KINDS.get(suffix, ("other", suffix))
+        bass = match.group("bass")
+
+        track.chord_symbols.append(
+            ChordSymbol(
+                symbol=symbol,
+                root_step=match.group("root").upper(),
+                root_alter=cls._accidental_to_alter(match.group("root_accidental") or ""),
+                kind=kind,
+                kind_text=kind_text,
+                start_slot=Fraction(track.cursor_slot),
+                track_name=track.name,
+                bass_step=bass.upper() if bass else None,
+                bass_alter=cls._accidental_to_alter(match.group("bass_accidental") or ""),
+            )
+        )
 
     @classmethod
     def _parse_tuplet(cls, match: re.Match[str], track: Track, line_number: int) -> None:
@@ -185,6 +242,14 @@ class DslParser:
                     tuplet=tuplet,
                 )
             )
+
+    @staticmethod
+    def _accidental_to_alter(accidental: str) -> int:
+        if accidental == "#":
+            return 1
+        if accidental == "b":
+            return -1
+        return 0
 
     @staticmethod
     def _parse_tempo(value: str, line_number: int) -> int:

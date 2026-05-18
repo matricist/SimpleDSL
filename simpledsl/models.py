@@ -24,6 +24,19 @@ class TupletInfo:
     group_start_slot: Fraction
 
 
+@dataclass(frozen=True)
+class ChordSymbol:
+    symbol: str
+    root_step: str
+    root_alter: int
+    kind: str
+    kind_text: str
+    start_slot: Fraction
+    track_name: str
+    bass_step: str | None = None
+    bass_alter: int = 0
+
+
 @dataclass
 class NoteEvent:
     step: str
@@ -45,12 +58,14 @@ class Track:
     name: str
     cursor_slot: int = 0
     notes: list[NoteEvent] = field(default_factory=list)
+    chord_symbols: list[ChordSymbol] = field(default_factory=list)
 
     @property
     def end_slot(self) -> Fraction:
-        if not self.notes:
-            return Fraction(self.cursor_slot)
-        return max(Fraction(self.cursor_slot), max(note.end_slot for note in self.notes))
+        positions = [Fraction(self.cursor_slot)]
+        positions.extend(note.end_slot for note in self.notes)
+        positions.extend(chord.start_slot for chord in self.chord_symbols)
+        return max(positions)
 
 
 @dataclass
