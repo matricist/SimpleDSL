@@ -1,6 +1,6 @@
 # Music DSL
 
-텍스트 기반으로 음악을 표현하기 위한 간단한 DSL(Domain Specific Language)입니다.
+텍스트 기반으로 피아노 음악을 표현하기 위한 간단한 DSL(Domain Specific Language)입니다.
 
 이 DSL은 사람이 직접 악보를 그리는 대신, 텍스트 형태로 음악을 작성한 뒤 이를 프로그램이 파싱하여 MusicXML, MIDI, 악보 등으로 변환하는 것을 목표로 합니다.
 
