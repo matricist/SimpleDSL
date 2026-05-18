@@ -174,24 +174,33 @@ class DslParser:
     def _parse_chord_line(cls, line: str, score: Score, line_number: int) -> None:
         measure_slots = cls._measure_slots(score, line_number)
         for measure in line.split("|"):
-            symbols = [symbol for symbol in re.split(r"\s+", measure.strip()) if symbol]
-            if symbols:
-                step = Fraction(measure_slots, len(symbols))
-                if step.denominator != 1:
+            cursor = 0
+            measure_start = Fraction(score.chord_cursor_slot)
+            segments = measure.strip().split(";")
+
+            for index, segment in enumerate(segments):
+                symbols = [symbol for symbol in re.split(r"\s+", segment.strip()) if symbol]
+                if len(symbols) > 1:
                     raise ValueError(
-                        f"Line {line_number}: {len(symbols)} chord symbols cannot be evenly placed in this measure."
+                        f"Line {line_number}: separate chord changes with semicolons, not spaces."
                     )
 
-                measure_start = Fraction(score.chord_cursor_slot)
-                for index, symbol in enumerate(symbols):
+                if symbols:
+                    if cursor >= measure_slots:
+                        raise ValueError(f"Line {line_number}: chord position is outside the current measure.")
                     score.chord_symbols.append(
                         cls._build_chord_symbol(
-                            symbol,
-                            measure_start + (step * index),
+                            symbols[0],
+                            measure_start + cursor,
                             CHORD_SECTION,
                             line_number,
                         )
                     )
+
+                if index < len(segments) - 1:
+                    cursor += 1
+                    if cursor > measure_slots:
+                        raise ValueError(f"Line {line_number}: too many chord-position semicolons in measure.")
 
             score.chord_cursor_slot += measure_slots
 
