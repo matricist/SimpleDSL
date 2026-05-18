@@ -8,7 +8,7 @@
 
 ## 현재 구현
 
-이 저장소에는 C# .NET 콘솔 앱이 포함되어 있습니다.
+이 저장소에는 Python 기반 Music DSL 변환기가 포함되어 있습니다.
 
 - DSL 파일을 파싱합니다.
 - 오른손(`RH`)과 왼손(`LH`) 트랙을 분리합니다.
@@ -19,6 +19,7 @@
 - 마디 경계를 넘는 음은 tie로 분할합니다.
 - 같은 슬롯에서 시작하는 여러 음은 chord로 출력합니다.
 - 빈 슬롯은 rest로 출력합니다.
+- MusicXML의 `<duration>`뿐 아니라 `<type>`도 음 길이에 맞게 출력합니다.
 
 ## 실행
 
@@ -30,19 +31,25 @@
 - `output.svg`: 바로 열어볼 수 있는 간단한 악보 이미지
 
 ```bash
-dotnet run
+python -m simpledsl
 ```
 
 입출력 경로를 직접 지정할 수도 있습니다.
 
 ```bash
-dotnet run -- input.dsl output.musicxml
+python -m simpledsl input.dsl output.musicxml
 ```
 
 세 번째 인자로 악보 SVG 출력 경로를 지정할 수도 있습니다.
 
 ```bash
-dotnet run -- input.dsl output.musicxml output.svg
+python -m simpledsl input.dsl output.musicxml output.svg
+```
+
+또는 루트의 `main.py`로 실행할 수도 있습니다.
+
+```bash
+python main.py input.dsl output.musicxml output.svg
 ```
 
 ## 핵심 개념
