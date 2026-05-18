@@ -10,22 +10,22 @@ C | G | Am | F
 
 // A, measures 5-16.
 C | G | Am | F
-C/E;;;;;;;;G | G | Am;;;;;;;;C | F
-C | G;;;;;;;;D/F# | Am;;;;;;;;F | C
+C/E | G | Am | F
+C | G | Am;;;;;;;;F | C;;;;;;;;G
 
 // A', measures 17-28.
-C | G;;;;;;;;D/F# | Am | C
-F;;;;;;;;C/E | Em | Dm;;;;;;;;F | G
-C;;;;;;;;G/B | F | Dm;;;;;;;;G | G
+C | G | Am | Em
+F | C/E | Dm | G
+C;;;;;;;;Am | F;;;;;;;;Em | Dm;;;;;;;;G | C;;;;;;;;G
 
 // B, measures 29-40.
-Am;;;;;;;;C | G;;;;;;;;D/F# | F;;;;;;;;C/E | Em
-Dm;;;;;;;;F | C | F;;;;;;;;Dm | G
-C/E;;;;;;;;G | Am;;;;;;;;C | F;;;;;;;;G | C
+Am | G | F | Em
+Dm | C | F | G
+C/E;;;;;;;;Am | F;;;;;;;;;;G | F;;;;;;;;G | C;;;;;;;;G
 
 // Return, measures 41-48.
 C | G | Am | F
-C/E | Am;;;;;;;;F | G | C
+C/E | G | C/G | C
 
 @track: RH
 // Intro, measures 1-4: gentle triplet turns and offbeat entries.
