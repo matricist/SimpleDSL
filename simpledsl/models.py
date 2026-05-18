@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from fractions import Fraction
 
 
 @dataclass
@@ -13,18 +14,29 @@ class ScoreMetadata:
     key: str = "C"
 
 
+@dataclass(frozen=True)
+class TupletInfo:
+    actual_notes: int
+    normal_notes: int
+    index: int
+    count: int
+    normal_duration_slots: Fraction
+    group_start_slot: Fraction
+
+
 @dataclass
 class NoteEvent:
     step: str
     alter: int
     octave: int
-    start_slot: int
-    duration_slots: int
+    start_slot: Fraction
+    duration_slots: Fraction
     track_name: str
     ornament: str | None = None
+    tuplet: TupletInfo | None = None
 
     @property
-    def end_slot(self) -> int:
+    def end_slot(self) -> Fraction:
         return self.start_slot + self.duration_slots
 
 
@@ -35,10 +47,10 @@ class Track:
     notes: list[NoteEvent] = field(default_factory=list)
 
     @property
-    def end_slot(self) -> int:
+    def end_slot(self) -> Fraction:
         if not self.notes:
-            return self.cursor_slot
-        return max(self.cursor_slot, max(note.end_slot for note in self.notes))
+            return Fraction(self.cursor_slot)
+        return max(Fraction(self.cursor_slot), max(note.end_slot for note in self.notes))
 
 
 @dataclass

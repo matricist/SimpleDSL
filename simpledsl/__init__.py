@@ -1,6 +1,6 @@
 """Music DSL parser and exporters."""
 
-from .models import NoteEvent, Score, ScoreMetadata, Track
+from .models import NoteEvent, Score, ScoreMetadata, Track, TupletInfo
 from .parser import DslParser
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     "Score",
     "ScoreMetadata",
     "Track",
+    "TupletInfo",
 ]

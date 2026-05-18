@@ -19,6 +19,8 @@
 - 같은 슬롯에서 시작하는 여러 음은 chord로 출력합니다.
 - 빈 슬롯은 rest로 출력합니다.
 - MusicXML의 `<duration>`뿐 아니라 `<type>`도 음 길이에 맞게 출력합니다.
+- 3연음(`T3[...]`)은 MusicXML의 `<time-modification>`과 `<tuplet>`으로 출력합니다.
+- 잇단음표를 정확히 표현하기 위해 MusicXML `divisions`는 12를 사용합니다. DSL의 슬롯 의미는 그대로 유지되며, 1슬롯은 여전히 16분음표입니다.
 
 ## 실행
 
@@ -53,6 +55,8 @@ python main.py input.dsl output.musicxml
   "techniques": {
     "flags": {
       "trill": true,
+      "triplets": true,
+      "syncopation": true,
       "brokenChords": true,
       "parallelThirds": true
     }
@@ -122,6 +126,33 @@ D6-4~tr
 ```
 
 MusicXML에서는 `<trill-mark/>`로 내보냅니다.
+
+### 3연음
+
+`T3[...]`는 현재 슬롯에서 시작하는 3연음 그룹입니다.
+
+```text
+T3[E5,F5,G5]-4
+```
+
+의미:
+
+- `E5`, `F5`, `G5`가 순서대로 연주됩니다.
+- 전체 그룹은 4 슬롯, 즉 4/4 기준 1박을 차지합니다.
+- 세 음은 MusicXML에서 8분음표 3연음으로 표시됩니다.
+- 시간 커서는 일반 음표와 마찬가지로 자동으로 그룹 길이만큼 이동하지 않습니다. 다음 음을 한 박 뒤에 두려면 `;;;;`를 써야 합니다.
+
+예시:
+
+```text
+T3[E5,F5,G5]-4;;;;C6-4;;;;
+```
+
+지원 범위:
+
+- 현재는 `T3`만 지원합니다.
+- 그룹 안의 음은 쉼표 없이 피치만 씁니다.
+- 구분자는 쉼표나 공백을 사용할 수 있습니다.
 
 ## 시간의 흐름
 

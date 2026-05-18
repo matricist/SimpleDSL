@@ -1,13 +1,22 @@
 from __future__ import annotations
 
+from fractions import Fraction
 import re
 
-from .models import NoteEvent, Score, Track
+from .models import NoteEvent, Score, Track, TupletInfo
 
 
 class DslParser:
     NOTE_RE = re.compile(
         r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)-(?P<duration>\d+)(?P<ornament>~(?:tr|trill))?",
+        re.IGNORECASE,
+    )
+    TUPLET_RE = re.compile(
+        r"T(?P<count>\d+)\[(?P<body>[^\]]+)\]-(?P<duration>\d+)",
+        re.IGNORECASE,
+    )
+    TUPLET_PITCH_RE = re.compile(
+        r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)(?P<ornament>~(?:tr|trill))?",
         re.IGNORECASE,
     )
 
@@ -93,6 +102,12 @@ class DslParser:
                 index += 1
                 continue
 
+            tuplet_match = cls.TUPLET_RE.match(segment, index)
+            if tuplet_match is not None:
+                cls._parse_tuplet(tuplet_match, track, line_number)
+                index = tuplet_match.end()
+                continue
+
             match = cls.NOTE_RE.match(segment, index)
             if match is None:
                 near = segment[index:]
@@ -112,13 +127,64 @@ class DslParser:
                     step=step,
                     alter=alter,
                     octave=octave,
-                    start_slot=track.cursor_slot,
-                    duration_slots=duration,
+                    start_slot=Fraction(track.cursor_slot),
+                    duration_slots=Fraction(duration),
                     track_name=track.name,
                     ornament=ornament,
                 )
             )
             index = match.end()
+
+    @classmethod
+    def _parse_tuplet(cls, match: re.Match[str], track: Track, line_number: int) -> None:
+        actual_notes = int(match.group("count"))
+        if actual_notes != 3:
+            raise NotImplementedError(f"Line {line_number}: only T3 triplets are currently supported.")
+
+        duration = int(match.group("duration"))
+        if duration <= 0:
+            raise ValueError(f"Line {line_number}: tuplet duration must be greater than zero.")
+
+        tokens = [token for token in re.split(r"[\s,]+", match.group("body").strip()) if token]
+        if len(tokens) != actual_notes:
+            raise ValueError(f"Line {line_number}: T3 must contain exactly 3 pitch tokens.")
+
+        normal_notes = 2
+        group_start = Fraction(track.cursor_slot)
+        note_duration = Fraction(duration, actual_notes)
+        normal_duration = Fraction(duration, normal_notes)
+
+        for index, token in enumerate(tokens):
+            pitch_match = cls.TUPLET_PITCH_RE.fullmatch(token)
+            if pitch_match is None:
+                raise ValueError(f"Line {line_number}: invalid tuplet pitch '{token}'.")
+
+            step = pitch_match.group("step").upper()
+            accidental = pitch_match.group("accidental") or ""
+            alter = 1 if accidental == "#" else -1 if accidental == "b" else 0
+            octave = int(pitch_match.group("octave"))
+            ornament = "trill" if pitch_match.group("ornament") else None
+            tuplet = TupletInfo(
+                actual_notes=actual_notes,
+                normal_notes=normal_notes,
+                index=index,
+                count=actual_notes,
+                normal_duration_slots=normal_duration,
+                group_start_slot=group_start,
+            )
+
+            track.notes.append(
+                NoteEvent(
+                    step=step,
+                    alter=alter,
+                    octave=octave,
+                    start_slot=group_start + (note_duration * index),
+                    duration_slots=note_duration,
+                    track_name=track.name,
+                    ornament=ornament,
+                    tuplet=tuplet,
+                )
+            )
 
     @staticmethod
     def _parse_tempo(value: str, line_number: int) -> int:
