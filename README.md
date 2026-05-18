@@ -13,7 +13,6 @@
 - DSL 파일을 파싱합니다.
 - 오른손(`RH`)과 왼손(`LH`) 트랙을 분리합니다.
 - MusicXML 4.0 partwise 형식으로 내보냅니다.
-- 간단한 악보 SVG를 함께 내보냅니다.
 - `RH`는 MusicXML part `P1`, `LH`는 `P2`로 출력합니다.
 - 4/4 박자와 `@unit: 1/16` 기준으로 마디를 자동 계산합니다.
 - 마디 경계를 넘는 음은 tie로 분할합니다.
@@ -25,10 +24,7 @@
 
 기본 입력 파일은 `input.dsl`입니다.
 
-기본 출력 파일은 다음 두 개입니다.
-
-- `output.musicxml`: MusicXML 파일
-- `output.svg`: 바로 열어볼 수 있는 간단한 악보 이미지
+기본 출력 파일은 `output.musicxml`입니다.
 
 ```bash
 python -m simpledsl
@@ -40,16 +36,10 @@ python -m simpledsl
 python -m simpledsl input.dsl output.musicxml
 ```
 
-세 번째 인자로 악보 SVG 출력 경로를 지정할 수도 있습니다.
-
-```bash
-python -m simpledsl input.dsl output.musicxml output.svg
-```
-
 또는 루트의 `main.py`로 실행할 수도 있습니다.
 
 ```bash
-python main.py input.dsl output.musicxml output.svg
+python main.py input.dsl output.musicxml
 ```
 
 ## 핵심 개념
