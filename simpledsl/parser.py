@@ -5,6 +5,8 @@ import re
 
 from .models import ChordSymbol, NoteEvent, Score, Track, TupletInfo
 
+CHORD_SECTION = "CHORD"
+
 
 class DslParser:
     NOTE_RE = re.compile(
@@ -19,7 +21,6 @@ class DslParser:
         r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)(?P<ornament>~(?:tr|trill))?",
         re.IGNORECASE,
     )
-    CHORD_RE = re.compile(r"\{(?P<symbol>[^{}]+)\}")
     CHORD_SYMBOL_RE = re.compile(
         r"(?P<root>[A-Ga-g])(?P<root_accidental>#|b)?(?P<suffix>[^/]*)"
         r"(?:/(?P<bass>[A-Ga-g])(?P<bass_accidental>#|b)?)?$"
@@ -47,7 +48,7 @@ class DslParser:
     @classmethod
     def parse(cls, text: str) -> Score:
         score = Score()
-        current_track: Track | None = None
+        current_section: Track | str | None = None
 
         for line_number, line in enumerate(text.replace("\r\n", "\n").replace("\r", "\n").split("\n"), 1):
             stripped = cls._strip_comment(line).strip()
@@ -55,13 +56,18 @@ class DslParser:
                 continue
 
             if stripped.startswith("@"):
-                current_track = cls._parse_metadata(score, stripped, line_number, current_track)
+                current_section = cls._parse_metadata(score, stripped, line_number, current_section)
                 continue
 
-            if current_track is None:
-                raise ValueError(f"Line {line_number}: notes must appear after an @track metadata line.")
+            if current_section is None:
+                raise ValueError(f"Line {line_number}: content must appear after an @track or @Chord line.")
 
-            cls._parse_music_line(stripped, current_track, line_number)
+            if current_section == CHORD_SECTION:
+                cls._parse_chord_line(stripped, score, line_number)
+            elif isinstance(current_section, Track):
+                cls._parse_music_line(stripped, current_section, line_number)
+            else:
+                raise ValueError(f"Line {line_number}: unknown section '{current_section}'.")
 
         cls._ensure_supported_metadata(score)
         score.get_or_create_track("RH")
@@ -74,10 +80,13 @@ class DslParser:
         score: Score,
         line: str,
         line_number: int,
-        current_track: Track | None,
-    ) -> Track | None:
+        current_section: Track | str | None,
+    ) -> Track | str | None:
+        if line.lower() == "@chord":
+            return CHORD_SECTION
+
         if ":" not in line:
-            raise ValueError(f"Line {line_number}: metadata must be written as @name: value.")
+            raise ValueError(f"Line {line_number}: metadata must be written as @name: value or @Chord.")
 
         name, value = line[1:].split(":", 1)
         name = name.strip().lower()
@@ -85,24 +94,26 @@ class DslParser:
 
         if name == "title":
             score.metadata.title = value
-            return current_track
+            return current_section
         if name == "unit":
             score.metadata.unit = value
-            return current_track
+            return current_section
         if name == "tempo":
             score.metadata.tempo_quarter_notes_per_minute = cls._parse_tempo(value, line_number)
-            return current_track
+            return current_section
         if name == "time":
             beats, beat_type = cls._parse_time(value, line_number)
             score.metadata.beats = beats
             score.metadata.beat_type = beat_type
-            return current_track
+            return current_section
         if name == "key":
             score.metadata.key = value
-            return current_track
+            return current_section
         if name == "track":
+            if value.upper() == CHORD_SECTION:
+                return CHORD_SECTION
             if value.upper() not in {"RH", "LH"}:
-                raise ValueError(f"Line {line_number}: supported tracks are RH and LH.")
+                raise ValueError(f"Line {line_number}: supported tracks are RH, LH, and Chord.")
             return score.get_or_create_track(value)
 
         raise ValueError(f"Line {line_number}: unsupported metadata '@{name}'.")
@@ -124,12 +135,6 @@ class DslParser:
         while index < len(segment):
             if segment[index].isspace():
                 index += 1
-                continue
-
-            chord_match = cls.CHORD_RE.match(segment, index)
-            if chord_match is not None:
-                cls._parse_chord_symbol(chord_match.group("symbol").strip(), track, line_number)
-                index = chord_match.end()
                 continue
 
             tuplet_match = cls.TUPLET_RE.match(segment, index)
@@ -166,7 +171,38 @@ class DslParser:
             index = match.end()
 
     @classmethod
-    def _parse_chord_symbol(cls, symbol: str, track: Track, line_number: int) -> None:
+    def _parse_chord_line(cls, line: str, score: Score, line_number: int) -> None:
+        measure_slots = cls._measure_slots(score, line_number)
+        for measure in line.split("|"):
+            symbols = [symbol for symbol in re.split(r"\s+", measure.strip()) if symbol]
+            if symbols:
+                step = Fraction(measure_slots, len(symbols))
+                if step.denominator != 1:
+                    raise ValueError(
+                        f"Line {line_number}: {len(symbols)} chord symbols cannot be evenly placed in this measure."
+                    )
+
+                measure_start = Fraction(score.chord_cursor_slot)
+                for index, symbol in enumerate(symbols):
+                    score.chord_symbols.append(
+                        cls._build_chord_symbol(
+                            symbol,
+                            measure_start + (step * index),
+                            CHORD_SECTION,
+                            line_number,
+                        )
+                    )
+
+            score.chord_cursor_slot += measure_slots
+
+    @classmethod
+    def _build_chord_symbol(
+        cls,
+        symbol: str,
+        start_slot: Fraction,
+        track_name: str,
+        line_number: int,
+    ) -> ChordSymbol:
         if not symbol:
             raise ValueError(f"Line {line_number}: chord symbol cannot be empty.")
 
@@ -178,18 +214,16 @@ class DslParser:
         kind, kind_text = cls.CHORD_KINDS.get(suffix, ("other", suffix))
         bass = match.group("bass")
 
-        track.chord_symbols.append(
-            ChordSymbol(
-                symbol=symbol,
-                root_step=match.group("root").upper(),
-                root_alter=cls._accidental_to_alter(match.group("root_accidental") or ""),
-                kind=kind,
-                kind_text=kind_text,
-                start_slot=Fraction(track.cursor_slot),
-                track_name=track.name,
-                bass_step=bass.upper() if bass else None,
-                bass_alter=cls._accidental_to_alter(match.group("bass_accidental") or ""),
-            )
+        return ChordSymbol(
+            symbol=symbol,
+            root_step=match.group("root").upper(),
+            root_alter=cls._accidental_to_alter(match.group("root_accidental") or ""),
+            kind=kind,
+            kind_text=kind_text,
+            start_slot=start_slot,
+            track_name=track_name,
+            bass_step=bass.upper() if bass else None,
+            bass_alter=cls._accidental_to_alter(match.group("bass_accidental") or ""),
         )
 
     @classmethod
@@ -269,6 +303,13 @@ class DslParser:
         if beats <= 0 or beat_type <= 0:
             raise ValueError(f"Line {line_number}: time signature values must be greater than zero.")
         return beats, beat_type
+
+    @staticmethod
+    def _measure_slots(score: Score, line_number: int) -> int:
+        slots = Fraction(score.metadata.beats * 16, score.metadata.beat_type)
+        if slots.denominator != 1:
+            raise ValueError(f"Line {line_number}: time signature cannot be represented with @unit: 1/16.")
+        return slots.numerator
 
     @staticmethod
     def _ensure_supported_metadata(score: Score) -> None:

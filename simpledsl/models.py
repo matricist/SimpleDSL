@@ -58,13 +58,11 @@ class Track:
     name: str
     cursor_slot: int = 0
     notes: list[NoteEvent] = field(default_factory=list)
-    chord_symbols: list[ChordSymbol] = field(default_factory=list)
 
     @property
     def end_slot(self) -> Fraction:
         positions = [Fraction(self.cursor_slot)]
         positions.extend(note.end_slot for note in self.notes)
-        positions.extend(chord.start_slot for chord in self.chord_symbols)
         return max(positions)
 
 
@@ -72,6 +70,8 @@ class Track:
 class Score:
     metadata: ScoreMetadata = field(default_factory=ScoreMetadata)
     tracks: dict[str, Track] = field(default_factory=dict)
+    chord_cursor_slot: int = 0
+    chord_symbols: list[ChordSymbol] = field(default_factory=list)
 
     def get_or_create_track(self, track_name: str) -> Track:
         normalized = track_name.upper()

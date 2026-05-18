@@ -102,7 +102,11 @@ class MusicXmlExporter:
     @classmethod
     def _append_part(cls, lines: list[str], score: Score, track_name: str) -> None:
         track = score.get_or_create_track(track_name)
-        measure_count = max(1, cls._ceil_slot(track.end_slot, MEASURE_SLOTS))
+        part_end_slot = track.end_slot
+        if track_name == "RH":
+            part_end_slot = max(part_end_slot, Fraction(score.chord_cursor_slot))
+
+        measure_count = max(1, cls._ceil_slot(part_end_slot, MEASURE_SLOTS))
 
         lines.append(f'  <part id="{PART_IDS[track_name]}">')
         for measure_number in range(1, measure_count + 1):
@@ -114,7 +118,9 @@ class MusicXmlExporter:
                 cls._append_attributes(lines, score, track_name)
                 cls._append_tempo(lines, score)
 
-            cls._append_measure_contents(lines, track.notes, track.chord_symbols, measure_start, measure_end)
+            chord_symbols = score.chord_symbols if track_name == "RH" else []
+
+            cls._append_measure_contents(lines, track.notes, chord_symbols, measure_start, measure_end)
             lines.append("    </measure>")
 
         lines.append("  </part>")
