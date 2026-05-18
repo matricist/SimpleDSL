@@ -157,6 +157,8 @@ class SheetSvgExporter:
             lines.append(f'  <path d="M {x - 18:g} {y + 14:g} Q {x:g} {y + 24:g} {x + 18:g} {y + 14:g}" fill="none" stroke="#1f2933" stroke-width="1"/>')
         if segment.end_slot < segment.note.end_slot:
             lines.append(f'  <path d="M {x + 10:g} {y + 14:g} Q {x + 29:g} {y + 24:g} {x + 48:g} {y + 14:g}" fill="none" stroke="#1f2933" stroke-width="1"/>')
+        if segment.note.ornament == "trill" and segment.start_slot == segment.note.start_slot:
+            lines.append(f'  <text x="{x:g}" y="{y - 16:g}" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-style="italic" fill="#1f2933">tr</text>')
 
     @staticmethod
     def _draw_rest(lines: list[str], measure_left: float, staff_top: float, start_offset: int) -> None:

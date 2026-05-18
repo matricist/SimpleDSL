@@ -7,7 +7,8 @@ from .models import NoteEvent, Score, Track
 
 class DslParser:
     NOTE_RE = re.compile(
-        r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)-(?P<duration>\d+)"
+        r"(?P<step>[A-Ga-g])(?P<accidental>#|b)?(?P<octave>-?\d+)-(?P<duration>\d+)(?P<ornament>~(?:tr|trill))?",
+        re.IGNORECASE,
     )
 
     @classmethod
@@ -102,6 +103,7 @@ class DslParser:
             alter = 1 if accidental == "#" else -1 if accidental == "b" else 0
             octave = int(match.group("octave"))
             duration = int(match.group("duration"))
+            ornament = "trill" if match.group("ornament") else None
             if duration <= 0:
                 raise ValueError(f"Line {line_number}: note duration must be greater than zero.")
 
@@ -113,6 +115,7 @@ class DslParser:
                     start_slot=track.cursor_slot,
                     duration_slots=duration,
                     track_name=track.name,
+                    ornament=ornament,
                 )
             )
             index = match.end()

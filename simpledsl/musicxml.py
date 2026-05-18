@@ -58,6 +58,10 @@ class NoteChunk:
     def tie_start(self) -> bool:
         return self.end_slot < self.note.end_slot
 
+    @property
+    def has_start_ornament(self) -> bool:
+        return self.note.ornament is not None and self.start_slot == self.note.start_slot
+
 
 class MusicXmlExporter:
     @classmethod
@@ -309,14 +313,28 @@ class MusicXmlExporter:
         if beams:
             for number, value in sorted(beams.items()):
                 lines.append(f'        <beam number="{number}">{value}</beam>')
-        if chunk.tie_stop or chunk.tie_start:
+        has_notations = chunk.tie_stop or chunk.tie_start or chunk.has_start_ornament
+        if has_notations:
             lines.append("        <notations>")
             if chunk.tie_stop:
                 lines.append('          <tied type="stop"/>')
             if chunk.tie_start:
                 lines.append('          <tied type="start"/>')
+            if chunk.has_start_ornament:
+                cls._append_ornament(lines, chunk.note.ornament)
             lines.append("        </notations>")
         lines.append("      </note>")
+
+    @staticmethod
+    def _append_ornament(lines: list[str], ornament: str | None) -> None:
+        if ornament == "trill":
+            lines.extend(
+                [
+                    "          <ornaments>",
+                    "            <trill-mark/>",
+                    "          </ornaments>",
+                ]
+            )
 
     @classmethod
     def _append_rest(cls, lines: list[str], duration: int) -> None:

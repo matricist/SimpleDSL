@@ -21,6 +21,7 @@ class NoteEvent:
     start_slot: int
     duration_slots: int
     track_name: str
+    ornament: str | None = None
 
     @property
     def end_slot(self) -> int:
